@@ -63,19 +63,74 @@ int main(int argc, char **argv)
         uint8_t Button2_value = bcm2835_gpio_lev(Button2);
         TS_value = bcm2835_gpio_lev(TS);
         uint8_t FS_value = bcm2835_gpio_lev(FS);
+    if (Button2_value == 0)
+        { 
+         if (booster_value<4095) booster_value=booster_value+500;
+         if (fuzz_value<2047) fuzz_value=fuzz_value+10;
+         if (Delay_Depth<DELAY_MAX)Delay_Depth=Delay_Depth+25000; 
+        }
+        else if (Button1_value == 0)
+        {
+            if (booster_value>500) booster_value=booster_value-500;
+            if (fuzz_value>0) fuzz_value=fuzz_value-10;
+            if (Delay_Depth>DELAY_MIN)Delay_Depth=Delay_Depth-25000;
+        }   
+ 
+ //area where you change between effects while the TS is down
+while (bcm2835_gpio_lev(TS))
+    { 
+    Button1_value= bcm2835_gpio_lev(Button1);
+    Button2_value= bcm2835_gpio_lev(Button2);
+ 
+    if (Button2_value == 0)
+        { 
+         if (effect_type<4) effect_type++;
+        }
+        else if (Button1_value == 0)
+        {
+            if (effect_type>1) effect_type--;
+        }
+	}    
+}
+ 
+    //Effects
+    switch(effect_type)
+    {
+    case 1:
+    //          BOOSTER 
+    output_signal= (int)((float)(input_signal) * (float)((float) booster_value / (float) 4095.0));
+    break;
+ 
+    case 2:
+    //            FUZZ
+    if (input_signal > 2047 + fuzz_value) output_signal= 4095;
+    if (input_signal < 2047 - fuzz_value) output_signal= 0;
+    break;
+ 
+    case 3:
+    //            DELAY 
+    Delay_Buffer[DelayCounter] = input_signal;
+    DelayCounter++;
+    if(DelayCounter >= Delay_Depth) DelayCounter = 0;
+    output_signal = (Delay_Buffer[DelayCounter]+input_signal)>>1;
+    break;
+ 
+ 
+    case 4:
+    //                ECHO
+    Echo_Buffer[DelayCounter]  = (input_signal + Echo_Buffer[DelayCounter])>>1;
+    DelayCounter++;    
+    if(DelayCounter >= Delay_Depth) DelayCounter = 0;
+    output_signal = (input_signal + (Echo_Buffer[DelayCounter]))>>1;
+ 
+    break;
     }
  
-    //read ADC
-    bcm2835_spi_transfernb(mosi, miso, 3);
-    input_signal = miso[2] + ((miso[1] & 0x0F) << 8); 
-  
-    //                   CLEAN
-    //Input directly to PWM output
-  
-    //generate output PWM signal 6 bits
-    bcm2835_pwm_set_data(1,input_signal & 0x3F);
-    bcm2835_pwm_set_data(0,input_signal >> 6);
+    //Outputs PWM
+    bcm2835_pwm_set_data(1,output_signal & 0x3F);
+    bcm2835_pwm_set_data(0,output_signal >> 6);
     }
+ 
   
     bcm2835_spi_end();
     bcm2835_close();
