@@ -1,14 +1,25 @@
 #include <stdio.h>
 #include <bcm2835.h> 
 
+#define DELAY_MAX 800000 	
+#define DELAY_MIN 0
 #define Button2           RPI_V2_GPIO_P1_38     
 #define FS                RPI_GPIO_P1_10
 #define TS                RPI_V2_GPIO_P1_32
 #define Button1           RPI_GPIO_P1_08              
 #define LED               RPI_V2_GPIO_P1_36   
  
-uint32_t read_timer=0;
-uint32_t input_signal=0;
+//effects variables
+uint32_t booster_value=2047; 
+uint32_t fuzz_value = 50; 	
+uint32_t Delay_Buffer[DELAY_MAX];
+uint32_t DelayCounter = 0;
+uint32_t delay;
+uint32_t Echo_Buffer[DELAY_MAX];
+uint32_t Delay_Depth = 50000;
+
+uint32_t rTimer = 0;
+uint32_t input_signal = 0;
   
 uint8_t FS_value;
 uint8_t TS_value;
